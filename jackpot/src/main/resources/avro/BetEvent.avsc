@@ -1,0 +1,28 @@
+{
+  "namespace": "com.asvarishch.jackpot.dto",
+  "type": "record",
+  "name": "BetEvent",
+  "fields": [
+    {
+      "name": "betId",
+      "type": "long"
+    },
+    {
+      "name": "userId",
+      "type": "long"
+    },
+    {
+      "name": "jackpotId",
+      "type": "long"
+    },
+    {
+      "name": "betAmount",
+      "type": {
+        "type": "bytes",
+        "logicalType": "decimal",
+        "precision": 19,
+        "scale": 2
+      }
+    }
+  ]
+}

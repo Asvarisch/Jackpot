@@ -1,0 +1,54 @@
+name: jackpot-full-container-stack-including-service-app
+
+services:
+  broker:
+    image: confluentinc/cp-kafka:7.9.0
+    container_name: broker
+    hostname: broker
+    environment:
+      # KRaft single-node
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_LISTENERS: "PLAINTEXT://broker:9092,CONTROLLER://broker:29093"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://broker:9092"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@broker:29093"
+      # required by Confluent images in KRaft mode
+      CLUSTER_ID: "kRaFtClusterId000000000001"   # any valid 22-char base64 UUID is fine for dev
+      # misc sane defaults
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    networks: [jacknet]
+
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.9.0
+    container_name: schema-registry
+    depends_on: [broker]
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: "broker:9092"
+    ports:
+      - "8081:8081"
+    networks: [jacknet]
+
+  jackpot-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: jackpot-service
+    depends_on: [broker, schema-registry]
+    environment:
+      # these must match your Spring jackpotConfig keys
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: broker:9092
+      SPRING_KAFKA_PRODUCER_PROPERTIES_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+      SPRING_KAFKA_CONSUMER_PROPERTIES_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+    ports:
+      - "8181:8181"
+    networks: [jacknet]
+
+networks:
+  jacknet:
+    driver: bridge

@@ -1,0 +1,56 @@
+server:
+  port: 8181
+
+topic:
+  name: jackpot-bets
+
+spring:
+  # H2 in-memory database configuration
+  datasource:
+    url: jdbc:h2:mem:jackpotdb;MODE=PostgreSQL;DATABASE_TO_UPPER=false;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+    hikari:
+      maximum-pool-size: 8
+      minimum-idle: 2
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+      settings:
+        web-allow-others: true   # allow access from host to container console
+        trace: false
+
+
+  jpa:
+    hibernate:
+      ddl-auto: create
+    defer-datasource-initialization: true  # make sure data.sql runs after JPA schema
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  sql:
+    init:
+      mode: always
+
+  application:
+    name: jackpot-service
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:19092}
+    producer:
+      key-serializer: "org.apache.kafka.common.serialization.StringSerializer"
+      value-serializer: "io.confluent.kafka.serializers.KafkaAvroSerializer"
+      properties:
+        schema.registry.url: ${SPRING_KAFKA_PRODUCER_PROPERTIES_SCHEMA_REGISTRY_URL:http://localhost:8081}
+    consumer:
+      group-id: "jackpot-consumer"
+      key-deserializer: "org.apache.kafka.common.serialization.StringDeserializer"
+      value-deserializer: "io.confluent.kafka.serializers.KafkaAvroDeserializer"
+      auto-offset-reset: "earliest"
+      properties:
+        schema.registry.url: ${SPRING_KAFKA_CONSUMER_PROPERTIES_SCHEMA_REGISTRY_URL:http://localhost:8081}
+        specific.avro.reader: "true"

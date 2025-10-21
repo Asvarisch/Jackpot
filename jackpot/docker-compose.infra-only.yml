@@ -1,0 +1,50 @@
+name: jackpot-infra-only-container-stack
+
+services:
+  broker:
+    image: confluentinc/cp-kafka:7.9.0
+    container_name: broker
+    hostname: broker
+    environment:
+      # Single-node KRaft (broker + controller in one)
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@broker:29093"
+
+      # Listeners:
+      # - PLAINTEXT is used by other containers on the bridge network (broker:9092)
+      # - PLAINTEXT_HOST is exposed to the host OS for IntelliJ (localhost:19092)
+      KAFKA_LISTENERS: "PLAINTEXT://broker:9092,PLAINTEXT_HOST://0.0.0.0:19092,CONTROLLER://broker:29093"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://broker:9092,PLAINTEXT_HOST://localhost:19092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+
+      # Dev-friendly defaults
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+
+      # Required by Confluent images in KRaft mode
+      CLUSTER_ID: "kRaFtClusterId000000000001"
+    ports:
+      - "19092:19092"    # host listener for your IntelliJ app
+    networks: [ jacknet ]
+
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.9.0
+    container_name: schema-registry
+    depends_on: [ broker ]
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_LISTENERS: "http://0.0.0.0:8081"
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: "broker:9092"
+    ports:
+      - "8081:8081"
+    networks: [ jacknet ]
+
+networks:
+  jacknet:
+    driver: bridge
